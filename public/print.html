@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print party signs</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
+<script src="/qrcode.js"></script>
+<style>
+:root{--orange:#ff7a18}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Special Elite',Georgia,serif;background:#1c1c24;color:#f3e9ff}
+#ctl{max-width:8.5in;margin:0 auto;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+#ctl h1{width:100%;margin:0;font-size:22px;font-weight:400}
+#ctl label{display:flex;flex-direction:column;font-size:13px;color:#cbbfe0;gap:4px;flex:1;min-width:200px}
+#ctl input[type=text],#ctl input[type=password]{padding:10px;border-radius:8px;border:1px solid #444;background:#111;color:#fff;font:inherit;font-size:16px}
+#ctl .chk{flex-direction:row;align-items:center;gap:8px;flex:none;min-width:0}
+#ctl button{padding:12px 20px;border-radius:10px;border:0;background:var(--orange);color:#1a0b00;font:inherit;font-size:18px;cursor:pointer}
+#tip{max-width:8.5in;margin:0 auto;padding:0 16px 8px;font-size:13px;color:#a898c4;line-height:1.45}
+.page{width:8.5in;height:11in;margin:16px auto;background:#fff;box-shadow:0 0 24px #000;padding:.4in;display:flex;flex-direction:column;gap:.2in;break-after:page}
+.sign{flex:1;min-height:0;border:2px dashed #999;border-radius:.2in;padding:.16in .25in;display:flex;gap:.08in;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;overflow:hidden}
+.sign.dark{background:#0a0612;color:#f3e9ff;border-color:#3b2a5c}
+.sign.light{background:#fff;color:#1a1020}
+.sign .t{font-family:'Creepster',Georgia,serif;font-size:.4in;line-height:1.05;color:var(--orange);letter-spacing:.01in}
+.sign.light .t{color:#d9570a}
+.sign .s{font-size:.22in;margin-top:.04in}
+.qrs{display:flex;gap:.28in;justify-content:center;align-items:flex-start;width:100%}
+.col{flex:1;max-width:2.15in;min-width:0}
+.col .n{font-family:'Creepster',Georgia,serif;font-size:.34in;color:var(--orange);line-height:1}
+.sign.light .col .n{color:#d9570a}
+.qr{background:#fff;border-radius:.1in;padding:.08in;margin:.05in auto .08in;width:100%;aspect-ratio:1/1;border:1px solid #ddd}
+.qr svg{width:100%;height:100%;display:block}
+.col .l{font-size:.2in;line-height:1.15}
+.col .l small{display:block;font-size:.15in;opacity:.75;margin-top:.03in;overflow-wrap:anywhere}
+.sign .f{font-size:.15in;opacity:.7;overflow-wrap:anywhere}
+@media print{
+  html,body{background:#fff}
+  #ctl,#tip{display:none}
+  .page{margin:0;box-shadow:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:letter;margin:0}
+}
+</style>
+</head>
+<body>
+<div id="ctl">
+  <h1>Party signs: print, cut, sprinkle around the house</h1>
+  <label>Address guests will reach (host:port)
+    <input id="host" type="text" placeholder="192.168.1.20:3000" autocomplete="off">
+  </label>
+  <label>Wi-Fi name (optional: adds a "join Wi-Fi" code)
+    <input id="ssid" type="text" autocomplete="off">
+  </label>
+  <label>Wi-Fi password (typed here only; never sent anywhere or saved)
+    <input id="pw" type="password" autocomplete="off">
+  </label>
+  <label class="chk"><input id="saver" type="checkbox"> Ink saver (light)</label>
+  <button id="go">Print</button>
+</div>
+<div id="tip">
+  Each sheet has 2 signs. Print as many copies as you want. The codes point at the address above, so keep the Mac on the same Wi-Fi and
+  <b>scan one with your own phone before printing a stack</b>. If the Mac's address changes later (new network or reboot), reprint.
+  Guests must be on the same Wi-Fi as the Mac for the booth to open.
+</div>
+<div id="pages"></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var info=null;
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+  function qr(text){
+    var q=qrcode(0,'M');q.addData(text);q.make();
+    var n=q.getModuleCount(),m=2,p='';
+    for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))p+='M'+(c+m)+','+(r+m)+'h1v1h-1z';
+    var s=n+2*m;
+    return '<svg viewBox="0 0 '+s+' '+s+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><path d="'+p+'" fill="#000"/></svg>';
+  }
+  function wifiEsc(s){return String(s).replace(/([\\;,:"])/g,'\\$1')}
+
+  function sign(cfg){
+    var steps=[];
+    if(cfg.wifi)steps.push({q:cfg.wifi,l:'Join the Wi-Fi',sm:cfg.ssid});
+    steps.push({q:cfg.booth,l:'Scan to get<br>turned into a monster',sm:'selfie &rarr; monster &amp; costume roast'});
+    steps.push({q:cfg.vote,l:'Vote &#10084; best costume',sm:cfg.closes?('voting closes '+esc(cfg.closes)):'scan to vote'});
+    var cols=steps.map(function(s,i){
+      return '<div class="col"><div class="n">'+(i+1)+'</div><div class="qr">'+qr(s.q)+'</div><div class="l">'+s.l+'<small>'+(s.sm||'')+'</small></div></div>';
+    }).join('');
+    return '<div class="sign '+(cfg.saver?'light':'dark')+'"><div><div class="t">'+esc(cfg.title)+'</div><div class="s">Get haunted. Get roasted. Get a trophy.</div></div>'+
+      '<div class="qrs">'+cols+'</div><div class="f">'+esc(cfg.hostShow)+'</div></div>';
+  }
+
+  function render(){
+    if(!info)return;
+    var host=$('#host').value.trim().replace(/^https?:\/\//,'').replace(/\/+$/,'');
+    if(!host)return;
+    var ssid=$('#ssid').value.trim(),pw=$('#pw').value;
+    var cfg={
+      title:info.partyTitle||'Halloween Party',
+      booth:'http://'+host+'/',
+      vote:'http://'+host+'/vote',
+      closes:info.closesAt?new Date(info.closesAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'',
+      wifi:ssid?('WIFI:T:'+(pw?'WPA':'nopass')+';S:'+wifiEsc(ssid)+';'+(pw?'P:'+wifiEsc(pw)+';':'')+';'):'',
+      ssid:ssid,saver:$('#saver').checked,hostShow:host
+    };
+    var one=sign(cfg);
+    $('#pages').innerHTML='<div class="page">'+one+one+'</div>';
+  }
+
+  ['host','ssid','pw','saver'].forEach(function(id){$('#'+id).addEventListener('input',render);$('#'+id).addEventListener('change',render)});
+  $('#go').onclick=function(){window.print()};
+
+  fetch('/api/info').then(function(r){return r.json()}).then(function(i){
+    info=i;
+    try{$('#host').value=new URL(i.boothUrl).host}catch(e){}
+    render();
+  });
+})();
+</script>
+</body>
+</html>

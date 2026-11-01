@@ -1,0 +1,13 @@
+# secrets and per-party data (guest photos, votes, names)
+.env
+album/
+album-*/
+guest-hints.json
+*.orig.jpg
+*.monster.jpg
+sample-*.jpg
+
+# junk
+.DS_Store
+*.bak*
+node_modules/

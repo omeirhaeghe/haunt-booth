@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0a0612">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<title>Haunt Roam</title>
+<style>
+:root{--bg:#0a0612;--ink:#f3e9ff;--muted:#a898c4;--orange:#ff7a18;--purple:#9b4dff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#top{display:flex;gap:8px;padding:10px 12px;align-items:center}
+#name{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1px solid #3b2a5c;background:#120a1f;color:var(--ink);font-size:18px}
+#flip{padding:12px 14px;border-radius:12px;border:1px solid #3b2a5c;background:#1b1230;color:var(--ink);font-size:18px}
+#vwrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+video.mirror{transform:scaleX(-1)}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:fl .35s ease-out}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+#noLive{padding:24px;text-align:center;color:var(--muted);line-height:1.4}
+#shutterRow{display:flex;justify-content:center;padding:12px 0}
+#shutter{width:92px;height:92px;border-radius:50%;border:6px solid #fff;background:var(--orange);box-shadow:0 0 28px rgba(255,122,24,.6);font-size:0}
+#shutter:active{transform:scale(.93)}
+#strip{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:10px;padding:6px 12px 12px;align-items:flex-start;min-height:0}
+.t{flex:none;width:120px;position:relative}
+.t img{width:120px;height:120px;object-fit:cover;border-radius:12px;border:2px solid #3b2a5c;display:block}
+.t .nm{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t .st{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.7);border-radius:8px;padding:2px 7px;font-size:11px}
+.t.done img{border-color:var(--orange)}
+.t.err img{border-color:#c33}
+.cursedfx{filter:grayscale(.5) sepia(.6) hue-rotate(-35deg) saturate(2.4) contrast(1.35) brightness(.72)}
+#count{position:absolute;right:12px;top:10px;background:rgba(0,0,0,.65);padding:4px 10px;border-radius:10px;font-size:13px}
+#viewer{position:fixed;inset:0;background:rgba(5,2,10,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;z-index:9}
+#viewer img{max-width:100%;max-height:60vh;border-radius:14px}
+#viewer button{padding:12px 22px;border-radius:12px;border:0;background:var(--orange);font-size:18px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <input id="name" type="text" placeholder="Name (optional, clears after each shot)" maxlength="24" autocomplete="off">
+    <button id="flip" aria-label="Flip camera">&#128260;</button>
+  </div>
+  <div id="vwrap">
+    <video id="vid" autoplay playsinline muted></video>
+    <div id="noLive" style="display:none">Tap the big button to open your camera.<br>Each photo is sent automatically.</div>
+    <div id="flash"></div>
+    <div id="count"></div>
+  </div>
+  <div id="shutterRow"><button id="shutter" aria-label="Take photo">Snap</button></div>
+  <div id="strip"></div>
+</div>
+<input id="cam" type="file" accept="image/*" capture="environment" style="display:none">
+<div id="viewer"><img id="vimg" alt=""><div id="vtxt" style="text-align:center;max-width:420px"></div><button id="vclose">Close</button></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var facing='environment',stream=null,live=false,sent=0;
+  var items={};
+
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+
+  function startCam(){
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.isSecureContext))return noLive();
+    if(stream){stream.getTracks().forEach(function(t){t.stop()})}
+    navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:1280}},audio:false})
+      .then(function(s){stream=s;live=true;var v=$('#vid');v.srcObject=s;v.classList.toggle('mirror',facing==='user');$('#noLive').style.display='none';v.style.display='block'})
+      .catch(noLive);
+  }
+  function noLive(){live=false;$('#vid').style.display='none';$('#noLive').style.display='block'}
+  $('#flip').onclick=function(){
+    facing=facing==='environment'?'user':'environment';
+    $('#cam').setAttribute('capture',facing);
+    if(live)startCam();
+  };
+
+  function crop(src,mirror){
+    return createImageBitmap(src).then(function(bmp){
+      var side=Math.min(bmp.width,bmp.height),sx=(bmp.width-side)/2,sy=(bmp.height-side)/2,out=Math.min(side,1024);
+      var c=document.createElement('canvas');c.width=c.height=out;
+      var x=c.getContext('2d');
+      if(mirror){x.translate(out,0);x.scale(-1,1)}
+      x.drawImage(bmp,sx,sy,side,side,0,0,out,out);
+      return new Promise(function(res){c.toBlob(res,'image/jpeg',0.88)});
+    });
+  }
+
+  $('#shutter').onclick=function(){
+    if(live){
+      var f=$('#flash');f.classList.remove('go');void f.offsetWidth;f.classList.add('go');
+      if(navigator.vibrate)navigator.vibrate(30);
+      crop($('#vid'),false).then(submit);
+    }else{
+      $('#cam').click();
+    }
+  };
+  $('#cam').onchange=function(e){
+    var file=e.target.files[0];e.target.value='';
+    if(file)crop(file,false).then(submit);
+  };
+
+  function submit(blob){
+    var nameEl=$('#name'),name=nameEl.value.trim();
+    nameEl.value='';
+    var key='l'+Date.now()+Math.random().toString(36).slice(2,6);
+    var url=URL.createObjectURL(blob);
+    var it=items[key]={key:key,name:name,local:url,status:'sending',id:null};
+    render();
+    upload(it,blob,0);
+    sent++;$('#count').textContent=sent+' shot'+(sent===1?'':'s');
+  }
+
+  function upload(it,blob,attempt){
+    fetch('/api/upload?name='+encodeURIComponent(it.name),{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob})
+      .then(function(r){if(!r.ok)throw new Error('bad');return r.json()})
+      .then(function(j){it.id=j.id;it.status='pending';render();poll(it,Date.now())})
+      .catch(function(){
+        if(attempt<4){it.status='retrying';render();setTimeout(function(){upload(it,blob,attempt+1)},3000*(attempt+1))}
+        else{it.status='error';render()}
+      });
+  }
+  function poll(it,t0){
+    if(Date.now()-t0>300000)return;
+    fetch('/api/photo/'+it.id,{cache:'no-store'}).then(function(r){return r.json()}).then(function(p){
+      if(p.status==='pending'){setTimeout(function(){poll(it,t0)},3000);return}
+      it.p=p;it.status='done';render();
+    }).catch(function(){setTimeout(function(){poll(it,t0)},4000)});
+  }
+
+  function render(){
+    var keys=Object.keys(items).reverse();
+    $('#strip').innerHTML=keys.map(function(k){
+      var it=items[k],done=it.status==='done',fb=done&&!it.p.monsterImg;
+      var src=done?(it.p.monsterImg||it.p.orig):it.local;
+      var label={sending:'sending',retrying:'retrying',pending:'haunting',error:'failed',done:''}[it.status];
+      return '<div class="t '+(done?'done':'')+(it.status==='error'?' err':'')+'" data-k="'+k+'"><img class="'+(fb?'cursedfx':'')+'" src="'+src+'" alt="">'+
+        (label?'<div class="st">'+label+'</div>':'')+'<div class="nm">'+esc(it.name||'guest')+'</div></div>';
+    }).join('');
+  }
+  $('#strip').onclick=function(e){
+    var t=e.target.closest&&e.target.closest('.t');if(!t)return;
+    var it=items[t.getAttribute('data-k')];if(!it||it.status!=='done')return;
+    var p=it.p,c=p.card||{};
+    $('#vimg').src=p.monsterImg||p.orig;
+    $('#vimg').className=p.monsterImg?'':'cursedfx';
+    $('#vtxt').innerHTML='<b style="font-size:20px">'+esc(p.name||'Unknown Guest')+' &mdash; '+esc(c.title)+'</b><p>'+esc(c.curse)+'</p>'+
+      (p.judge?'<p style="color:#ff7a18"><b>Judge: '+esc(p.judge.score)+'/10</b> &mdash; '+esc(p.judge.costume)+'<br><i>&ldquo;'+esc(p.judge.roast)+'&rdquo;</i></p>':'');
+    $('#viewer').style.display='flex';
+  };
+  $('#vclose').onclick=function(){$('#viewer').style.display='none'};
+
+  startCam();
+})();
+</script>
+</body>
+</html>

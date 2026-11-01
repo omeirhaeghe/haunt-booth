@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Haunt Booth TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07040d;--ink:#f3e9ff;--muted:#a898c4;--orange:#ff7a18;--purple:#9b4dff;--s:min(76vh,46vw)}
+#party{display:none;position:fixed;top:2vh;left:0;right:0;text-align:center;z-index:2;pointer-events:none}
+#party h1{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:7vh;line-height:1;margin:0;color:var(--orange);letter-spacing:.3vh;
+  text-shadow:0 0 2vh rgba(255,122,24,.55),0 0 6vh rgba(155,77,255,.45)}
+#party div{font-size:2.2vh;color:var(--muted);letter-spacing:.6vh;text-transform:uppercase;margin-top:.8vh}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Special Elite',Georgia,serif;cursor:none}
+body{background:linear-gradient(rgba(10,6,18,.25),rgba(10,6,18,.5)),url('/bg.jpg?v=house') center/cover no-repeat,var(--bg)}
+#fog{position:fixed;inset:-20%;pointer-events:none;opacity:.35;
+  background:radial-gradient(40% 30% at 20% 70%,rgba(155,77,255,.35),transparent 70%),radial-gradient(35% 28% at 80% 30%,rgba(255,122,24,.25),transparent 70%);
+  animation:drift 28s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(6%,-4%) scale(1.15)}}
+#stage{position:fixed;left:0;right:0;top:3vh;bottom:12vh;display:flex;align-items:center;justify-content:center;gap:4vw;padding:2vh 4vw}
+#frame{position:relative;width:var(--s);height:var(--s);border-radius:10px;border:.5vh solid #3a2559;
+  box-shadow:0 0 6vh rgba(155,77,255,.45),0 0 2vh rgba(255,122,24,.25);overflow:hidden;background:#000;flex:none}
+#frame.revealed{border-color:var(--orange);box-shadow:0 0 7vh rgba(255,122,24,.6),0 0 14vh rgba(155,77,255,.35)}
+.imgs{position:absolute;inset:0}
+.layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity 1.1s ease}
+#imgA{filter:grayscale(.15)}
+.cursedfx{filter:grayscale(.5) sepia(.6) hue-rotate(-35deg) saturate(2.4) contrast(1.35) brightness(.72)}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 45%,transparent 38%,rgba(0,0,0,.85) 100%);opacity:0;transition:opacity 1.1s}
+#frame.revealed #vignette{opacity:1}
+#drips{position:absolute;left:0;top:0;width:100%;height:42%;pointer-events:none;opacity:0;transition:opacity 1.1s}
+#frame.fallback.revealed #drips{opacity:.95}
+#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px);mix-blend-mode:multiply}
+#frame.glitch .imgs{animation:glitch .9s steps(1,end) infinite}
+@keyframes glitch{
+  0%{transform:translate(0,0) skew(0);filter:none}
+  10%{transform:translate(-2%,1%) skew(2deg);filter:hue-rotate(90deg) contrast(1.6) saturate(2)}
+  20%{transform:translate(3%,-1%);filter:invert(1)}
+  30%{transform:translate(-1%,2%) skew(-3deg);filter:hue-rotate(-60deg) brightness(1.8)}
+  40%{transform:translate(2%,0);filter:none}
+  50%{transform:translate(-3%,-2%) skew(4deg);filter:contrast(2) grayscale(1)}
+  60%{transform:translate(1%,3%);filter:hue-rotate(160deg) saturate(3)}
+  70%{transform:translate(-2%,0) skew(-2deg);filter:invert(1) hue-rotate(180deg)}
+  80%{transform:translate(2%,-3%);filter:brightness(.4)}
+  90%{transform:translate(0,1%) skew(1deg);filter:contrast(1.8)}
+  100%{transform:none;filter:none}
+}
+#badge{position:absolute;left:0;top:2.4vh;background:var(--orange);color:#1a0b00;font-size:2.4vh;padding:.7vh 2vh;border-radius:0 2vh 2vh 0;
+  transform:translateX(-110%);transition:transform .5s;z-index:3;letter-spacing:.2vh}
+#badge.on{transform:none}
+#card{width:40vw;max-width:46vw;opacity:0;transform:translateY(3vh);transition:opacity .9s,transform .9s}
+#card.show{opacity:1;transform:none}
+#cname{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:9vh;line-height:1;margin:0;color:var(--orange);
+  text-shadow:0 0 2vh rgba(255,122,24,.5),0 0 5vh rgba(155,77,255,.4)}
+#ctitle{font-size:3.6vh;color:var(--purple);margin:1vh 0 3vh}
+#ccurse{font-size:3.4vh;line-height:1.35;margin:0 0 2.4vh}
+#clast{font-size:3vh;color:var(--muted);font-style:italic;margin:0 0 3.4vh}
+.stat{display:flex;align-items:center;gap:2vh;margin:1.2vh 0;font-size:2.6vh;letter-spacing:.3vh}
+.stat span{width:15vh;color:var(--muted)}
+.bar{flex:1;height:2vh;background:#1a1030;border-radius:1vh;overflow:hidden;border:1px solid #3a2559}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--orange));transition:width 1.4s .3s ease-out}
+#judge{margin-top:3vh;padding:2vh 2.4vh;border:1px solid #3a2559;border-left:.8vh solid var(--orange);border-radius:1.4vh;background:rgba(21,13,36,.75);display:flex;gap:2.4vh;align-items:center}
+#jscore{font-family:'Creepster',Georgia,serif;font-size:9vh;line-height:1;color:var(--orange);text-shadow:0 0 2vh rgba(255,122,24,.5);flex:none;text-align:center}
+#jscore small{display:block;font-family:'Special Elite',Georgia,serif;font-size:1.8vh;color:var(--muted);letter-spacing:.3vh}
+#jcostume{font-size:2.2vh;color:var(--purple);letter-spacing:.3vh;text-transform:uppercase;margin-bottom:.6vh}
+#jroast{font-size:2.8vh;line-height:1.3;margin:0}
+#stage{transition:opacity .6s}
+#lb{position:fixed;left:0;right:0;top:4vh;bottom:12vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:0 4vw;z-index:4}
+#lb.on{display:flex}
+#scene{position:fixed;inset:0;z-index:6;background:#05030a;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.2s}
+#scene.on{opacity:1}
+#scene img{width:100%;height:100%;object-fit:contain;transform:scale(1);transition:transform 18s linear}
+#scene.on img{transform:scale(1.06)}
+#scene .cap{position:absolute;left:0;right:0;bottom:3vh;text-align:center;font-family:'Creepster',Georgia,serif;font-size:6vh;color:var(--orange);text-shadow:0 0 2vh #000,0 0 4vh rgba(155,77,255,.7)}
+#lbTitle{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:8vh;line-height:1;margin:0 0 2.4vh;color:var(--orange);text-shadow:0 0 2vh rgba(255,122,24,.55),0 0 6vh rgba(155,77,255,.45);text-align:center}
+.lbcols{display:flex;gap:4vw;width:100%;justify-content:center;align-items:flex-start}
+.lbcol{flex:1;max-width:38vw;min-width:0}
+.lbcol h3{font-size:2.4vh;font-weight:400;letter-spacing:.5vh;color:var(--purple);text-transform:uppercase;margin:0 0 1vh;text-align:center}
+.lrow{display:flex;align-items:center;gap:1.6vh;background:rgba(21,13,36,.82);border:1px solid #3a2559;border-radius:1.2vh;padding:.9vh 1.4vh;margin:.8vh 0}
+.lrow b{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:4vh;color:var(--orange);width:4vh;text-align:center}
+.lrow img{width:7vh;height:7vh;object-fit:cover;border-radius:.8vh;flex:none}
+.lrow .n{flex:1;min-width:0;font-size:2.8vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .n small{display:block;font-size:1.9vh;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.lrow .s{font-size:3.2vh;color:var(--orange);flex:none}
+#lbqr{width:22vh;height:22vh;background:#fff;border-radius:8px;overflow:hidden;margin:0 auto}
+#lbqr svg{width:100%;height:100%;display:block}
+.vt{text-align:center;font-size:2vh;color:var(--muted);margin-top:1vh}
+.wins{display:flex;gap:3vw;justify-content:center;width:100%}
+.win{width:24vw;text-align:center;min-width:0}
+.win .aw{font-size:2.4vh;letter-spacing:.5vh;color:var(--purple);text-transform:uppercase;margin-bottom:1vh}
+.win img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:1.4vh;border:.5vh solid var(--orange);box-shadow:0 0 5vh rgba(255,122,24,.5);display:block}
+.win .wn{font-family:'Creepster',Georgia,serif;font-size:5.4vh;line-height:1.05;color:var(--orange);margin-top:1.2vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.win .wc{font-size:2.3vh;color:var(--muted);margin-top:.4vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.win .ws{font-size:3vh;color:var(--ink);margin-top:.4vh}
+.wins.two{gap:7vw}
+.wins.two .win{width:34vh}
+.win .wv{font-size:2.1vh;line-height:1.3;color:var(--ink);margin-top:.8vh;font-style:italic;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.mgrid{display:grid;gap:1vh;justify-content:center;align-content:center}
+.mt{position:relative;border-radius:1vh;overflow:hidden;border:.3vh solid #3a2559;background:#000;transition:border-color .8s,box-shadow .8s}
+.mt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity 1s}
+.mt img.m{opacity:0}
+.mt.on img.m{opacity:1}
+.mt.on{border-color:var(--orange);box-shadow:0 0 2vh rgba(255,122,24,.55)}
+.mt.gl img{animation:glitch .5s steps(1,end) infinite}
+.mt .nm{position:absolute;left:0;right:0;bottom:0;font-size:1.9vh;padding:.6vh .4vh .4vh;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar{position:fixed;left:0;right:0;bottom:0;height:12vh;display:flex;align-items:center;gap:3vw;padding:0 3vw;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent)}
+#qr{height:9.5vh;width:9.5vh;background:#fff;border-radius:6px;overflow:hidden;flex:none;display:none}
+#qr svg,#vqr svg{width:100%;height:100%;display:block}
+#vqr{height:9.5vh;width:9.5vh;background:#fff;border-radius:6px;overflow:hidden;flex:none;display:none;box-shadow:0 0 2vh rgba(255,122,24,.5)}
+#vjoin{font-size:2.6vh;color:var(--muted);line-height:1.3;text-align:right;display:none}
+#vjoin b{color:var(--orange);font-size:3vh;font-weight:400}
+#join{font-size:2.6vh;color:var(--muted);line-height:1.3}
+#wqr{height:9.5vh;width:9.5vh;background:#fff;border-radius:6px;overflow:hidden;flex:none;display:none}
+#wqr svg,#bigwqr svg{width:100%;height:100%;display:block}
+#wjoin{font-size:2.6vh;color:var(--muted);line-height:1.3;display:none}
+#wjoin b{color:var(--ink);font-size:3vh;font-weight:400}
+.step{display:inline-block;background:var(--orange);color:#120a1f;border-radius:50%;width:1.25em;height:1.25em;line-height:1.25em;text-align:center;font-weight:700;margin-right:.3em}
+#bigrow{display:flex;gap:6vw;align-items:flex-start;justify-content:center}
+#bigrow .bc{display:flex;flex-direction:column;align-items:center;gap:1.6vh;font-size:3.4vh;color:var(--ink)}
+#bigwifi{display:none}
+#bigwqr{width:30vh;height:30vh;background:#fff;border-radius:10px;overflow:hidden}
+#join b{color:var(--ink);font-size:3vh;font-weight:400}
+#pending{flex:1;text-align:center;font-size:2.6vh;color:var(--orange);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pending.dots::after{content:'...';animation:dots 1.4s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+#total{font-size:2.6vh;color:var(--muted);text-align:right}
+#total b{font-family:'Creepster',serif;font-weight:400;font-size:5vh;color:var(--orange);display:block;line-height:1}
+#empty{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:3vh;text-align:center;z-index:5;background:rgba(7,4,13,.55)}
+#empty h1{font-family:'Creepster',serif;font-weight:400;font-size:11vh;text-align:center;padding:0 4vw;margin:0;color:var(--orange);text-shadow:0 0 3vh rgba(255,122,24,.6),0 0 8vh rgba(155,77,255,.5)}
+#empty p{font-size:3.4vh;color:var(--muted);margin:0}
+#bigqr{width:30vh;height:30vh;background:#fff;border-radius:10px;overflow:hidden;display:none}
+#bigqr svg{width:100%;height:100%;display:block}
+#bigurl{font-size:3.6vh;color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="fog"></div>
+<div id="party"><h1 id="partyTitle">Haunt Booth</h1><div id="partySub"></div></div>
+
+<div id="stage">
+  <div id="frame">
+    <div class="imgs">
+      <img id="imgA" class="layer" alt="">
+      <img id="imgB" class="layer" alt="" style="opacity:0">
+    </div>
+    <div id="vignette"></div>
+    <svg id="drips" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="#7a0010">
+        <rect x="0" y="0" width="100" height="5"/>
+        <rect x="6" y="0" width="3" height="22" rx="1.5"/><circle cx="7.5" cy="23" r="2.2"/>
+        <rect x="17" y="0" width="2.2" height="14" rx="1.1"/><circle cx="18.1" cy="15" r="1.7"/>
+        <rect x="29" y="0" width="3.4" height="30" rx="1.7"/><circle cx="30.7" cy="31" r="2.5"/>
+        <rect x="43" y="0" width="2.4" height="12" rx="1.2"/><circle cx="44.2" cy="13" r="1.8"/>
+        <rect x="55" y="0" width="3" height="24" rx="1.5"/><circle cx="56.5" cy="25" r="2.2"/>
+        <rect x="68" y="0" width="2.2" height="16" rx="1.1"/><circle cx="69.1" cy="17" r="1.7"/>
+        <rect x="79" y="0" width="3.4" height="34" rx="1.7"/><circle cx="80.7" cy="35" r="2.5"/>
+        <rect x="92" y="0" width="2.6" height="18" rx="1.3"/><circle cx="93.3" cy="19" r="1.9"/>
+      </g>
+    </svg>
+    <div id="scan"></div>
+    <div id="badge">NEW ARRIVAL</div>
+  </div>
+  <div id="card">
+    <h2 id="cname"></h2>
+    <div id="ctitle"></div>
+    <p id="ccurse"></p>
+    <p id="clast"></p>
+    <div class="stat"><span>FRIGHT</span><div class="bar"><i id="sFright"></i></div></div>
+    <div class="stat"><span>CHARM</span><div class="bar"><i id="sCharm"></i></div></div>
+    <div class="stat"><span>STAMINA</span><div class="bar"><i id="sStamina"></i></div></div>
+    <div id="judge" style="display:none">
+      <div id="jscore"></div>
+      <div><div id="jcostume"></div><p id="jroast"></p></div>
+    </div>
+  </div>
+</div>
+
+<div id="scene"></div>
+<div id="lb"><h2 id="lbTitle"></h2><div id="lbBody" style="width:100%"></div></div>
+
+<div id="bar">
+  <div id="wqr"></div>
+  <div id="wjoin"><span class="step">1</span>Join our Wi-Fi<br><b id="wname"></b></div>
+  <div id="qr"></div>
+  <div id="join"><span class="step" id="step2" style="display:none">2</span>&#128248; Become a monster<br><b id="joinUrl"></b></div>
+  <div id="pending"></div>
+  <div id="vjoin">Vote best costume<br><b>&#10084; scan here</b></div>
+  <div id="vqr"></div>
+  <div id="total"><b id="totalN">0</b>souls collected</div>
+</div>
+
+<div id="empty">
+  <h1 id="emptyTitle">Haunt Booth</h1>
+  <p id="emptyHint">Scan to get turned into a monster</p>
+  <div id="bigrow">
+    <div class="bc" id="bigwifi"><div><span class="step">1</span>Join our Wi-Fi</div><div id="bigwqr"></div><div id="bigwname"></div></div>
+    <div class="bc"><div id="bigstep2" style="display:none"><span class="step">2</span>Become a monster</div><div id="bigqr"></div><div id="bigurl"></div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var DWELL=16000;
+  var info=null,items=[],seen={},priority=[],rotation=[],current=null,shownAt=0,timers=[],firstLoad=true;
+  var overlayOn=false,playCount=0,voteOpen=true,lastVoteOpen=null,finaleShown=false,pendingCache=[];
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+  function imgOf(p){return p.monsterImg||p.orig}
+  function fxOf(p){return p.monsterImg?'':'cursedfx'}
+  function jscore(p){return p.judge?p.judge.score:0}
+  function closeTxt(){return info&&info.closesAt?new Date(info.closesAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}
+
+  function t(ms,fn){timers.push(setTimeout(fn,ms))}
+  function clearTimers(){timers.forEach(clearTimeout);timers=[]}
+  function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var x=a[i];a[i]=a[j];a[j]=x}return a}
+
+  // ---- QR (library from CDN; page still works without it) ----
+  function qrSvg(url){
+    var q=qrcode(0,'M');q.addData(url);q.make();
+    var n=q.getModuleCount(),m=2,p='';
+    for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))p+='M'+(c+m)+','+(r+m)+'h1v1h-1z';
+    var s=n+2*m;
+    return '<svg viewBox="0 0 '+s+' '+s+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><path d="'+p+'" fill="#000"/></svg>';
+  }
+  function setupQR(){
+    var s=document.createElement('script');
+    s.src='/qrcode.js';
+    s.onload=function(){
+      try{
+        var svg=qrSvg(info.boothUrl);
+        $('qr').innerHTML=svg;$('qr').style.display='block';
+        $('bigqr').innerHTML=svg;$('bigqr').style.display='block';
+        if(info.voteUrl){$('vqr').innerHTML=qrSvg(info.voteUrl);showVoteQR()}
+        qrReady=true;showWifi();
+      }catch(e){}
+    };
+    document.head.appendChild(s);
+  }
+
+  // ---- Wi-Fi join QR (from WIFI_NAME / WIFI_PASSWORD in .env; re-checked so no restart is needed) ----
+  var qrReady=false,wifiSig='';
+  function showWifi(){
+    var w=info&&info.wifi,sig=w&&w.qr?w.qr:'';
+    if(!qrReady||sig===wifiSig)return;wifiSig=sig;
+    var on=!!sig;
+    if(on){var svg=qrSvg(w.qr);$('wqr').innerHTML=svg;$('bigwqr').innerHTML=svg;$('wname').textContent=w.name;$('bigwname').textContent=w.name}
+    $('wqr').style.display=on?'block':'none';$('wjoin').style.display=on?'block':'none';
+    $('bigwifi').style.display=on?'flex':'none';$('bigstep2').style.display=on?'block':'none';$('step2').style.display=on?'inline-block':'none';
+    $('emptyHint').textContent=on?'Join the Wi-Fi first, then scan to get turned into a monster':'Scan to get turned into a monster';
+  }
+  setInterval(function(){
+    fetch('/api/info',{cache:'no-store'}).then(function(r){return r.json()}).then(function(i){if(info){info.wifi=i.wifi;showWifi()}}).catch(function(){});
+  },20000);
+
+  fetch('/api/info').then(function(r){return r.json()}).then(function(i){
+    info=i;
+    if(i.partyTitle){$('partyTitle').textContent=i.partyTitle;document.title=i.partyTitle}
+    $('partySub').textContent=i.partySub||'';
+    var shortUrl=i.boothUrl.replace(/^http:\/\//,'').replace(/\/$/,'');
+    $('joinUrl').textContent=shortUrl;$('bigurl').textContent=shortUrl;
+    setupQR();
+  }).catch(function(){});
+
+  // ---- polling ----
+  function refresh(){
+    fetch('/api/photos',{cache:'no-store'}).then(function(r){return r.json()}).then(function(list){
+      var ready=list.filter(function(p){return p.status!=='pending'});
+      var pending=list.filter(function(p){return p.status==='pending'});
+      ready.forEach(function(p){
+        if(!seen[p.id]){seen[p.id]=1;if(!firstLoad)priority.push(p)}
+      });
+      items=ready;
+      pendingCache=pending;
+      renderBar(pending,ready.length);
+      $('empty').style.display=ready.length?'none':'flex';
+      if(!overlayOn){
+        if(!current&&ready.length)next();
+        else if(priority.length&&Date.now()-shownAt>8000)next();
+      }
+      firstLoad=false;
+    }).catch(function(){firstLoad=false});
+  }
+  // Vote QR in the bottom bar: only while voting is open and the QR has been drawn.
+  function showVoteQR(){
+    var on=voteOpen&&!!$('vqr').innerHTML;
+    $('vqr').style.display=on?'block':'none';
+    $('vjoin').style.display=on?'block':'none';
+  }
+  function renderBar(pending,n){
+    $('totalN').textContent=n;
+    showVoteQR();
+    var el=$('pending');
+    if(!pending.length){
+      el.className='';
+      if(info&&info.voteUrl){
+        el.textContent=voteOpen?(closeTxt()?'Voting closes '+closeTxt():'❤ Voting is open'):'Voting closed';
+      }else el.textContent='';
+      return;
+    }
+    var names=pending.map(function(p){return p.name||'a mystery guest'}).slice(0,3).join(', ');
+    el.textContent='Summoning '+names+(pending.length>3?' +'+(pending.length-3):'');
+    el.className='dots';
+  }
+
+  // ---- playback ----
+  function pick(){
+    var found=null;
+    for(var tries=0;tries<2&&!found;tries++){
+      if(!rotation.length){
+        rotation=shuffle(items.filter(function(x){return items.length===1||!current||x.id!==current.id}));
+      }
+      while(rotation.length&&!found){
+        var id=rotation.shift().id;
+        for(var i=0;i<items.length;i++)if(items[i].id===id)found=items[i];
+      }
+    }
+    return found;
+  }
+  function next(){
+    if(overlayOn)return;
+    var p=priority.shift(),isNew=!!p;
+    // Every 6 slots: Hall of Fame at 0, before/after album montage at 3.
+    if(!p&&items.length>=3&&playCount>0&&playCount%6===0){playCount++;return showBoard()}
+    if(!p&&items.length>=2&&playCount%6===3){playCount++;return showMontage()}
+    // Group scene every 6 slots, and right away (after the current guest) when a fresh one is painted.
+    if(!p&&scenes.length){var fr=freshScene();if(fr||playCount%6===5){playCount++;if(showScene(fr))return}}
+    if(!p)p=pick();
+    if(!p){current=null;return}
+    playCount++;
+    play(p,isNew);
+  }
+
+  // ---- leaderboard + finale overlays ----
+  function showOverlay(title,html,ms){
+    clearTimers();overlayOn=true;current=null;
+    $('card').classList.remove('show');
+    $('stage').style.opacity=0;
+    $('scene').classList.remove('on');
+    $('lbTitle').textContent=title;$('lbBody').innerHTML=html;$('lb').classList.add('on');
+    t(ms,hideOverlay);
+  }
+  // ---- group scene: every monster partying in front of the house (regenerated by the server after each guest) ----
+  var scenes=[],sceneSeen=0,sceneDeck=[];
+  function checkScene(){
+    fetch('/api/scene',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
+      scenes=(d&&d.scenes)||[];
+      if(!sceneSeen)scenes.forEach(function(x){sceneSeen=Math.max(sceneSeen,x.createdAt)}); // on page load, don't replay old ones
+      scenes.forEach(function(x){var im=new Image();im.src=x.url});
+    }).catch(function(){});
+  }
+  function freshScene(){
+    var f=null;scenes.forEach(function(x){if(x.createdAt>sceneSeen&&(!f||x.createdAt>f.createdAt))f=x});return f;
+  }
+  function showScene(sc){
+    if(!scenes.length)return false;
+    if(!sc){ // shuffle through all the paintings before repeating
+      if(!sceneDeck.length)sceneDeck=shuffle(scenes.map(function(_,i){return i}));
+      sc=scenes[sceneDeck.pop()]||scenes[0];
+    }
+    clearTimers();overlayOn=true;current=null;
+    scenes.forEach(function(x){if(x.createdAt>sceneSeen&&x===sc)sceneSeen=x.createdAt});
+    $('card').classList.remove('show');$('stage').style.opacity=0;
+    var el=$('scene');
+    el.innerHTML='<img src="'+sc.url+'" alt=""><div class="cap">The Monster Bash'+(scenes.length>1?' &middot; Part '+sc.part:'')+'</div>';
+    void el.offsetWidth;el.classList.add('on');
+    t(18000,function(){el.classList.remove('on');t(1200,hideOverlay)});
+    return true;
+  }
+  function hideOverlay(){
+    overlayOn=false;$('lb').classList.remove('on');$('stage').style.opacity=1;
+    next();
+  }
+  function fillQR(id){
+    try{if(typeof qrcode!=='undefined'&&info&&info.voteUrl){
+      var q=qrcode(0,'M');q.addData(info.voteUrl);q.make();
+      var n=q.getModuleCount(),m=2,p='';
+      for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))p+='M'+(c+m)+','+(r+m)+'h1v1h-1z';
+      var s=n+2*m;
+      $(id).innerHTML='<svg viewBox="0 0 '+s+' '+s+'" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><path d="'+p+'" fill="#000"/></svg>';
+      return;
+    }}catch(e){}
+    // QR library not available (offline?): show the address as text instead of a blank box
+    if(info&&info.voteUrl){
+      var el=$(id);el.style.background='none';
+      el.innerHTML='<div style="color:#f3e9ff;font-size:2.4vh;padding-top:5vh;text-align:center;word-break:break-all">'+esc(info.voteUrl.replace(/^http:\/\//,''))+'</div>';
+    }
+  }
+  function lrows(list,fmt){
+    return list.map(function(p,i){
+      return '<div class="lrow"><b>'+(i+1)+'</b><img class="'+fxOf(p)+'" src="'+imgOf(p)+'" alt=""><div class="n">'+esc(p.name||'Guest')+
+        '<small>'+esc(p.judge?p.judge.costume:'')+'</small></div><div class="s">'+fmt(p)+'</div></div>';
+    }).join('');
+  }
+  function showBoard(){
+    var judged=items.filter(function(p){return p.judge&&!p.vip}).sort(function(a,b){return jscore(b)-jscore(a)||b.votes-a.votes}).slice(0,5);
+    var crowd=items.filter(function(p){return p.votes>0&&!p.vip}).sort(function(a,b){return b.votes-a.votes||jscore(b)-jscore(a)}).slice(0,5);
+    var html='<div class="lbcols"><div class="lbcol"><h3>Judge’s top '+judged.length+'</h3>'+lrows(judged,function(p){return p.judge.score+'/10'})+'</div>';
+    if(crowd.length)html+='<div class="lbcol"><h3>Crowd favorites</h3>'+lrows(crowd,function(p){return '❤ '+p.votes})+'</div>';
+    if(voteOpen)html+='<div class="lbcol" style="flex:none;width:24vh"><h3>Vote now</h3><div id="lbqr"></div><div class="vt">'+(closeTxt()?'closes '+closeTxt():'scan to vote')+'</div></div>';
+    html+='</div>';
+    showOverlay('Hall of Fame',html,16000);
+    fillQR('lbqr');
+  }
+  // ---- album montage: every guest's original photo, then each one morphs into its monster ----
+  function showMontage(){
+    var list=items.slice(-30);
+    if(list.length<2)return;
+    var n=list.length,W=innerWidth*0.92,H=innerHeight*0.70,gap=innerHeight*0.01,best=0,cols=1;
+    for(var c=1;c<=n;c++){
+      var r=Math.ceil(n/c),s=Math.min((W-gap*(c-1))/c,(H-gap*(r-1))/r);
+      if(s>best){best=s;cols=c}
+    }
+    var sz=Math.floor(best);
+    var html='<div class="mgrid" style="grid-template-columns:repeat('+cols+','+sz+'px);grid-auto-rows:'+sz+'px">'+
+      list.map(function(p,i){
+        return '<div class="mt" id="mt'+i+'"><img src="'+p.orig+'" alt=""><img class="m '+fxOf(p)+'" src="'+imgOf(p)+'" alt="">'+
+          (p.name&&sz>110?'<div class="nm">'+esc(p.name)+'</div>':'')+'</div>';
+      }).join('')+'</div>';
+    var HOLD=4500,SPREAD=Math.min(6000,600*n),END=6500;
+    showOverlay('Before...',html,HOLD+SPREAD+END);
+    t(HOLD-400,function(){$('lbTitle').textContent='...and after'});
+    shuffle(list.map(function(_,i){return i})).forEach(function(i,k){
+      var at=HOLD+Math.round(k*SPREAD/n);
+      t(at,function(){var el=$('mt'+i);if(el)el.classList.add('gl')});
+      t(at+550,function(){var el=$('mt'+i);if(el){el.classList.remove('gl');el.classList.add('on')}});
+    });
+  }
+  function winCard(label,p,sub,extra){
+    return '<div class="win"><div class="aw">'+label+'</div><img class="'+fxOf(p)+'" src="'+imgOf(p)+'" alt=""><div class="wn">'+esc(p.name||'Guest')+'</div>'+
+      '<div class="wc">'+esc(p.judge?p.judge.costume:'')+'</div><div class="ws">'+sub+'</div>'+(extra?'<div class="wv">'+extra+'</div>':'')+'</div>';
+  }
+  var finaleToken=0;
+  function byId(id){for(var i=0;i<items.length;i++)if(items[i].id===id)return items[i];return null}
+  function showFinale(){
+    if(!items.length)return;
+    var tok=++finaleToken;
+    showOverlay('The AI judge is deliberating...','<div class="vt" style="font-size:3vh">Counting hearts and consulting the spirits</div>',60000);
+    fetch('/api/awards',{cache:'no-store'}).then(function(r){return r.json()}).then(function(a){
+      if(tok!==finaleToken||!overlayOn)return;
+      var ai=a.ai&&byId(a.ai.id),cr=a.crowd&&byId(a.crowd.id),html;
+      var verdict=ai&&a.ai.verdict?'“'+esc(a.ai.verdict)+'”':'';
+      if(ai&&cr&&ai.id===cr.id){
+        html='<div class="wins two">'+winCard('Double winner!',ai,'<span style="color:var(--purple);font-size:2.2vh">People’s + AI’s Choice</span><br>❤ '+cr.votes+' · '+ai.judge.score+'/10',verdict)+'</div>';
+      }else{
+        html='<div class="wins two">';
+        if(cr)html+=winCard('People’s Choice',cr,'❤ '+cr.votes+' vote'+(cr.votes===1?'':'s'));
+        else html+='<div class="win"><div class="aw">People’s Choice</div><div class="wn" style="margin-top:14vh">No votes cast</div></div>';
+        if(ai)html+=winCard('AI’s Choice',ai,ai.judge.score+' / 10',verdict);
+        html+='</div>';
+      }
+      clearTimers();
+      $('lbTitle').textContent='And the winners are...';
+      $('lbBody').innerHTML=html;
+      t(60000,hideOverlay);
+    }).catch(function(){if(tok===finaleToken&&overlayOn)hideOverlay()});
+  }
+
+  // ---- voting status (auto finale when voting closes) ----
+  function checkVote(){
+    fetch('/api/info',{cache:'no-store'}).then(function(r){return r.json()}).then(function(i){
+      info=i;voteOpen=!!i.voteOpen;
+      renderBar(pendingCache,items.length);
+      if(lastVoteOpen===true&&!voteOpen&&!finaleShown){finaleShown=true;showFinale()}
+      lastVoteOpen=voteOpen;
+    }).catch(function(){});
+  }
+  setInterval(checkVote,5000);
+  checkVote();
+  function fillCard(p){
+    var c=p.card||{},s=c.stats||{};
+    $('cname').textContent=p.name||'Unknown Guest';
+    $('ctitle').textContent=c.title||'';
+    $('ccurse').textContent=c.curse||'';
+    $('clast').textContent=c.last_words?'“'+c.last_words+'”':'';
+    ['Fright','Charm','Stamina'].forEach(function(k){$('s'+k).style.width='0'});
+    var j=p.judge;
+    $('judge').style.display=j?'flex':'none';
+    if(j){
+      $('jscore').innerHTML=j.score+'<small>/ 10 JUDGE</small>';
+      $('jcostume').textContent='Costume: '+j.costume;
+      $('jroast').textContent='“'+j.roast+'”';
+    }
+    return s;
+  }
+  function play(p,isNew){
+    clearTimers();
+    current=p;
+    var frame=$('frame'),a=$('imgA'),b=$('imgB'),card=$('card');
+    frame.classList.remove('glitch','fallback','revealed');
+    card.classList.remove('show');
+    $('badge').classList.toggle('on',!!isNew);
+    b.style.opacity=0;
+    var fb=!p.monsterImg;
+    a.src=p.orig;b.src=p.monsterImg||p.orig;
+    b.classList.toggle('cursedfx',fb);
+    frame.classList.toggle('fallback',fb);
+    var s=fillCard(p);
+    shownAt=Date.now();
+    var ready=Promise.all([a.decode(),b.decode()]).catch(function(){});
+    ready.then(function(){
+      if(current!==p)return;
+      shownAt=Date.now();
+      t(2600,function(){frame.classList.add('glitch')});
+      t(3400,function(){b.style.opacity=1;frame.classList.add('revealed')});
+      t(4300,function(){
+        frame.classList.remove('glitch');
+        card.classList.add('show');
+        $('sFright').style.width=(s.fright||50)+'%';
+        $('sCharm').style.width=(s.charm||50)+'%';
+        $('sStamina').style.width=(s.stamina||50)+'%';
+      });
+      t(DWELL,next);
+    });
+  }
+
+  refresh();
+  setInterval(refresh,3000);
+  checkScene();setInterval(checkScene,10000);
+  // Press F to toggle fullscreen from the keyboard.
+  // W = winners now, B = leaderboard now, C = close voting now (then winners appear), F = fullscreen.
+  document.addEventListener('keydown',function(e){
+    var k=(e.key||'').toLowerCase();
+    if(k==='f'){
+      if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen();
+    }else if(k==='w'){showFinale()}
+    else if(k==='b'){if(items.length)showBoard()}
+    else if(k==='a'){showMontage()}
+    else if(k==='s'){showScene()}
+    else if(k==='c'){
+      fetch('/api/votes/close',{method:'POST'}).then(function(r){
+        if(!r.ok)return;
+        voteOpen=false;lastVoteOpen=false;finaleShown=true;
+        showFinale();checkVote();
+      });
+    }
+  });
+  // Deep links: /tv#board, #winners, #montage, #scene jump straight to that screen once photos have loaded.
+  var hashKey={board:'b',winners:'w',montage:'a',scene:'s'}[location.hash.slice(1)];
+  if(hashKey)setTimeout(function(){document.dispatchEvent(new KeyboardEvent('keydown',{key:hashKey}))},2500);
+})();
+</script>
+</body>
+</html>

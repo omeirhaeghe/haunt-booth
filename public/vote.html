@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0612">
+<title>Vote</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0612;--ink:#f3e9ff;--muted:#a898c4;--orange:#ff7a18;--purple:#9b4dff;--card:#150d24}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Special Elite',Georgia,serif}
+body{min-height:100vh;padding:0 0 60px;background:radial-gradient(900px 500px at 50% -10%,#3a1466 0%,transparent 60%),var(--bg)}
+header{position:sticky;top:0;z-index:5;background:rgba(10,6,18,.94);backdrop-filter:blur(6px);border-bottom:1px solid #3b2a5c;padding:10px 14px 10px;text-align:center}
+h1{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:34px;margin:0;color:var(--orange);text-shadow:0 0 14px rgba(255,122,24,.5)}
+#status{font-size:16px;margin-top:2px;color:var(--muted)}
+#status b{color:var(--orange);font-size:20px}
+#msg{min-height:20px;font-size:14px;color:#ff9aa8;margin-top:2px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;max-width:1100px;margin:16px auto 0;padding:0 14px}
+.tile{background:var(--card);border:1px solid #3b2a5c;border-radius:16px;overflow:hidden}
+.tile.mine{border-color:var(--orange);box-shadow:0 0 18px rgba(255,122,24,.35)}
+.imgs{position:relative}
+.imgs .after{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+.imgs .before{position:absolute;right:10px;bottom:10px;width:30%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:2px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,.6)}
+.cursedfx{filter:grayscale(.5) sepia(.6) hue-rotate(-35deg) saturate(2.4) contrast(1.35) brightness(.72)}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px 12px}
+.who{flex:1;min-width:0}
+.who h2{font-family:'Creepster',serif;font-weight:400;font-size:26px;margin:0;color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who div{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .j{color:var(--purple)}
+.heart{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:72px;height:68px;border-radius:16px;border:1px solid #3b2a5c;background:#1b1230;color:var(--ink);font:inherit;font-size:30px;line-height:1}
+.heart small{font-size:14px;color:var(--muted);margin-top:2px}
+.heart.on{background:linear-gradient(180deg,#ff9a3c,#ff6a00);color:#1a0b00;border-color:transparent}
+.heart.on small{color:#1a0b00}
+.heart:disabled{opacity:.55}
+.rank{position:absolute;left:10px;top:10px;background:var(--orange);color:#1a0b00;border-radius:10px;padding:2px 10px;font-size:15px}
+.empty{text-align:center;color:var(--muted);margin-top:40px}
+#closed{display:none;background:#2a1030;border:1px solid var(--orange);border-radius:12px;margin:14px auto 0;max-width:600px;padding:12px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="ttl">Vote for best costume</h1>
+  <div id="status">Loading...</div>
+  <div id="msg"></div>
+</header>
+<div id="closed">Voting is closed. Thanks for playing! Check the big screen for the winners.</div>
+<div id="grid"></div>
+<div class="empty" id="empty" style="display:none">Nobody has been haunted yet. Check back soon!</div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+  function rnd(){var s='';for(var i=0;i<16;i++)s+=Math.floor(Math.random()*36).toString(36);return s}
+  var memId=null;
+  function voter(){
+    try{var v=localStorage.getItem('hb_voter');if(!v||!/^[a-z0-9]{8,40}$/i.test(v)){v=rnd();localStorage.setItem('hb_voter',v)}return v}
+    catch(e){return memId||(memId=rnd())}
+  }
+  var V=voter(),photos=[],st={open:true,limit:3,mine:[],closesAt:null},sig='',busy=false;
+
+  function closeTxt(){return st.closesAt?new Date(st.closesAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}
+
+  function load(){
+    return Promise.all([
+      fetch('/api/photos',{cache:'no-store'}).then(function(r){return r.json()}),
+      fetch('/api/votes?voter='+V,{cache:'no-store'}).then(function(r){return r.json()})
+    ]).then(function(a){
+      photos=a[0].filter(function(p){return p.status!=='pending'});
+      st=a[1];render();
+    }).catch(function(){});
+  }
+
+  function render(){
+    var left=Math.max(0,st.limit-st.mine.length);
+    $('#status').innerHTML=st.open
+      ?'You have <b>'+left+'</b> of '+st.limit+' votes left'+(st.closesAt?' &middot; closes '+closeTxt():'')
+      :'Voting closed';
+    $('#closed').style.display=st.open?'none':'block';
+    var list=photos.slice();
+    if(st.open)list.sort(function(a,b){return b.createdAt-a.createdAt});
+    else list.sort(function(a,b){return (a.vip-b.vip)||b.votes-a.votes||b.createdAt-a.createdAt});
+    var s=[st.open,st.mine.join(','),list.map(function(p){return p.id+':'+p.votes}).join(',')].join('|');
+    if(s===sig)return;sig=s;
+    $('#empty').style.display=list.length?'none':'block';
+    $('#grid').innerHTML=list.map(function(p,i){
+      var on=st.mine.indexOf(p.id)>=0,fb=!p.monsterImg,j=p.judge;
+      return '<div class="tile'+(on?' mine':'')+'"><div class="imgs">'+
+        (!st.open&&i<3&&p.votes>0&&!p.vip?'<div class="rank">#'+(i+1)+'</div>':'')+
+        '<img class="after'+(fb?' cursedfx':'')+'" loading="lazy" src="'+(p.monsterImg||p.orig)+'" alt="">'+
+        '<img class="before" loading="lazy" src="'+p.orig+'" alt=""></div>'+
+        '<div class="row"><div class="who"><h2>'+esc(p.name||'Unknown Guest')+'</h2>'+
+        (j?'<div class="j">'+esc(j.costume)+' &middot; judge '+esc(j.score)+'/10</div>':'')+'</div>'+
+        (p.vip?'<div class="host" style="font-size:13px;opacity:.8;text-align:center">👑<br>Host<br>not competing</div></div></div>':
+        '<button class="heart'+(on?' on':'')+'" data-id="'+p.id+'"'+(st.open?'':' disabled')+' aria-label="Vote">'+
+        (on?'❤':'♡')+'<small>'+p.votes+'</small></button></div></div>');
+    }).join('');
+  }
+
+  $('#grid').addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('.heart');if(!b||b.disabled||busy)return;
+    var id=b.getAttribute('data-id'),on=st.mine.indexOf(id)<0;
+    busy=true;$('#msg').textContent='';
+    fetch('/api/vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voter:V,id:id,on:on})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+      .then(function(x){
+        if(!x.ok){$('#msg').textContent=x.j.error||'Vote failed';if(x.j.open===false)st.open=false}
+        if(navigator.vibrate&&x.ok)navigator.vibrate(20);
+      })
+      .catch(function(){$('#msg').textContent='Could not reach the party server.'})
+      .then(function(){busy=false;sig='';return load()});
+  });
+
+  load();
+  setInterval(load,5000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0612">
+<title>Haunt Booth</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0612;--ink:#f3e9ff;--muted:#a898c4;--orange:#ff7a18;--purple:#9b4dff;--card:#150d24}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Special Elite',Georgia,serif}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:22px 16px 48px;
+  background:radial-gradient(900px 500px at 50% -10%,#3a1466 0%,transparent 60%),radial-gradient(700px 500px at 100% 100%,#5a2a00 0%,transparent 55%),var(--bg)}
+h1{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:clamp(46px,14vw,76px);letter-spacing:2px;margin:4px 0 0;color:var(--orange);
+  text-shadow:0 0 18px rgba(255,122,24,.55),0 0 40px rgba(155,77,255,.35);text-align:center}
+.sub{color:var(--muted);text-align:center;margin:6px 0 22px;font-size:17px}
+.view{display:none;width:100%;max-width:440px;flex-direction:column;align-items:center;gap:14px}
+.view.on{display:flex}
+input[type=text]{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #3b2a5c;background:#120a1f;color:var(--ink);font:inherit;font-size:18px;text-align:center}
+button,.btn{font:inherit;cursor:pointer;border:0;border-radius:16px;padding:18px 20px;font-size:22px;width:100%;text-align:center;text-decoration:none;display:block}
+.primary{background:linear-gradient(180deg,#ff9a3c,#ff6a00);color:#1a0b00;box-shadow:0 0 28px rgba(255,122,24,.45)}
+.secondary{background:#1b1230;color:var(--ink);border:1px solid #3b2a5c;font-size:18px;padding:14px}
+.ghost{font-size:84px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 16px rgba(155,77,255,.7))}
+@keyframes float{50%{transform:translateY(-14px)}}
+.note{color:var(--muted);text-align:center;font-size:15px;line-height:1.4}
+video{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:#000;transform:scaleX(-1);border:2px solid #3b2a5c}
+#count{position:absolute;font-family:'Creepster',serif;font-size:140px;color:var(--orange);text-shadow:0 0 30px #000}
+.vwrap{position:relative;width:100%;display:flex;justify-content:center;align-items:center}
+.pair{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
+.pair img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:14px;border:2px solid #3b2a5c}
+.pair .lbl{font-size:13px;color:var(--muted);margin:4px 0 0;text-align:center}
+.cursedfx{filter:grayscale(.5) sepia(.6) hue-rotate(-35deg) saturate(2.4) contrast(1.35) brightness(.72)}
+.cardbox{width:100%;background:var(--card);border:1px solid #3b2a5c;border-radius:16px;padding:16px;text-align:center}
+.cardbox h2{font-family:'Creepster',serif;font-weight:400;font-size:32px;margin:0;color:var(--orange)}
+.cardbox .t{color:var(--purple);margin:2px 0 10px;font-size:18px}
+.cardbox p{margin:6px 0;line-height:1.4}
+.stats{display:flex;gap:8px;justify-content:center;margin-top:10px;color:var(--muted);font-size:14px}
+.stats b{color:var(--ink);font-size:20px;display:block}
+.spin{width:54px;height:54px;border-radius:50%;border:5px solid #2a1a45;border-top-color:var(--orange);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<h1>Haunt Booth</h1>
+<div class="sub">Get turned into a monster.</div>
+
+<section id="home" class="view on">
+  <div class="ghost">&#128123;</div>
+  <input id="name" type="text" placeholder="Who's in this photo? (first name)" maxlength="24" autocomplete="off">
+  <button id="sameBtn" class="secondary hide" type="button"></button>
+  <button id="takeBtn" class="primary">&#128248; Take your photo</button>
+  <button id="liveBtn" class="secondary hide">Use live camera (countdown)</button>
+  <button id="libBtn" class="secondary">Pick from my photos</button>
+  <a class="btn secondary" href="/vote">&#10084; Vote for best costume</a>
+  <div class="note">Selfie works best: face the camera, fill the frame.</div>
+  <input id="cam" type="file" accept="image/*" capture="user" class="hide">
+  <input id="lib" type="file" accept="image/*" class="hide">
+</section>
+
+<section id="live" class="view">
+  <div class="vwrap"><video id="vid" autoplay playsinline muted></video><div id="count"></div></div>
+  <button id="snapBtn" class="primary">3, 2, 1... Summon!</button>
+  <button id="backBtn" class="secondary">Back</button>
+</section>
+
+<section id="working" class="view">
+  <div class="ghost">&#128128;</div>
+  <div class="spin"></div>
+  <div id="workMsg" class="note" style="font-size:19px">Summoning your monster...</div>
+  <div class="note">Takes 20-60 seconds. Go grab a drink and watch the big screen &mdash; you'll appear there.</div>
+</section>
+
+<section id="result" class="view">
+  <div class="pair">
+    <div><img id="resAfter" alt="Your monster"><div class="lbl" id="afterLbl">After</div></div>
+    <div><img id="resBefore" alt="You"><div class="lbl">Before</div></div>
+  </div>
+  <div class="cardbox" id="resCard"></div>
+  <a id="dl" class="btn primary" download>Save my monster</a>
+  <button id="againBtn" class="secondary">Haunt another guest</button>
+</section>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var views=['home','live','working','result'];
+  function show(id){views.forEach(function(v){$('#'+v).classList.toggle('on',v===id)});window.scrollTo(0,0)}
+  fetch('/api/info').then(function(r){return r.json()}).then(function(i){
+    if(i.partyTitle)document.querySelector('.sub').textContent=i.partyTitle+' — get turned into a monster.';
+  }).catch(function(){});
+  // Phones get passed around, so the name starts empty for every photo.
+  // The last name is offered as a one-tap "same person again" button instead of being pre-filled.
+  var nameEl=$('#name'),sameBtn=$('#sameBtn'),lastName='';
+  try{lastName=localStorage.getItem('hb_last')||''}catch(e){}
+  function refreshSame(){
+    var show=lastName&&!nameEl.value.trim();
+    sameBtn.classList.toggle('hide',!show);
+    if(show)sameBtn.textContent='↺ It’s '+lastName+' again';
+  }
+  sameBtn.onclick=function(){nameEl.value=lastName;refreshSame()};
+  nameEl.oninput=refreshSame;
+  refreshSame();
+
+  $('#takeBtn').onclick=function(){$('#cam').click()};
+  $('#libBtn').onclick=function(){$('#lib').click()};
+  $('#cam').onchange=function(e){handle(e.target.files[0]);e.target.value=''};
+  $('#lib').onchange=function(e){handle(e.target.files[0]);e.target.value=''};
+  $('#againBtn').onclick=function(){show('home')};
+
+  // Live camera only works on https or localhost (browser rule); phones on plain http use the native camera button.
+  var stream=null;
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.isSecureContext){$('#liveBtn').classList.remove('hide')}
+  function stopCam(){if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}}
+  $('#liveBtn').onclick=function(){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:1280}},audio:false})
+      .then(function(s){stream=s;$('#vid').srcObject=s;show('live')})
+      .catch(function(){alert('Could not open the camera. Use "Take your photo" instead.')});
+  };
+  $('#backBtn').onclick=function(){stopCam();show('home')};
+  $('#snapBtn').onclick=function(){
+    var n=3,c=$('#count');$('#snapBtn').disabled=true;c.textContent=n;
+    var iv=setInterval(function(){
+      n--;
+      if(n>0){c.textContent=n;return}
+      clearInterval(iv);c.textContent='';
+      createImageBitmap($('#vid')).then(function(bmp){stopCam();$('#snapBtn').disabled=false;handle(bmp)});
+    },900);
+  };
+
+  function squareJpeg(src){
+    return createImageBitmap(src).then(function(bmp){
+      var side=Math.min(bmp.width,bmp.height),sx=(bmp.width-side)/2,sy=(bmp.height-side)/2,out=Math.min(side,1024);
+      var c=document.createElement('canvas');c.width=c.height=out;
+      c.getContext('2d').drawImage(bmp,sx,sy,side,side,0,0,out,out);
+      return new Promise(function(res){c.toBlob(res,'image/jpeg',0.88)});
+    });
+  }
+
+  function handle(file){
+    if(!file)return;
+    var name=nameEl.value.trim();
+    if(name){lastName=name;try{localStorage.setItem('hb_last',name)}catch(e){}}
+    nameEl.value='';refreshSame();
+    show('working');
+    squareJpeg(file).then(function(blob){
+      return fetch('/api/upload?name='+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});
+    }).then(function(r){if(!r.ok)throw new Error('upload');return r.json()})
+      .then(function(j){poll(j.id,Date.now())})
+      .catch(function(){$('#workMsg').textContent='The spirits missed that one. Please try again.';setTimeout(function(){show('home')},2500)});
+  }
+
+  function poll(id,t0){
+    var msgs=['Summoning your monster...','Stitching on the fangs...','Adding fog...','Consulting the spirits...','Almost undead...'];
+    var i=0;
+    (function tick(){
+      if(Date.now()-t0>240000){$('#workMsg').textContent='The spirits are slow tonight. Check the big screen!';return}
+      $('#workMsg').textContent=msgs[i++%msgs.length];
+      fetch('/api/photo/'+id,{cache:'no-store'}).then(function(r){return r.json()}).then(function(p){
+        if(p.status==='pending')return setTimeout(tick,2500);
+        showResult(p);
+      }).catch(function(){setTimeout(tick,3000)});
+    })();
+  }
+
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+  function showResult(p){
+    var fb=!p.monsterImg;
+    var after=$('#resAfter');
+    after.src=p.monsterImg||p.orig;after.className=fb?'cursedfx':'';
+    $('#resBefore').src=p.orig;
+    $('#afterLbl').textContent=fb?'After (the spirits were shy, so you got the cheap curse)':'After';
+    var c=p.card||{},s=c.stats||{};
+    $('#resCard').innerHTML='<h2>'+esc(p.name||'Unknown Guest')+'</h2><div class="t">'+esc(c.title)+'</div>'+
+      '<p>'+esc(c.curse)+'</p><p><i>&ldquo;'+esc(c.last_words)+'&rdquo;</i></p>'+
+      '<div class="stats"><div><b>'+esc(s.fright)+'</b>FRIGHT</div><div><b>'+esc(s.charm)+'</b>CHARM</div><div><b>'+esc(s.stamina)+'</b>STAMINA</div></div>'+
+      (p.judge?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid #3b2a5c"><div style="color:var(--purple);font-size:14px;letter-spacing:1px;text-transform:uppercase">Judge: '+esc(p.judge.costume)+' &mdash; <b style="color:var(--orange);font-size:20px">'+esc(p.judge.score)+'/10</b></div><p><i>&ldquo;'+esc(p.judge.roast)+'&rdquo;</i></p></div>':'');
+    var dl=$('#dl');dl.href=after.src;dl.setAttribute('download','my-monster.jpg');
+    show('result');
+  }
+})();
+</script>
+</body>
+</html>

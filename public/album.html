@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Halloween Album</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0612;--ink:#f3e9ff;--muted:#a898c4;--orange:#ff7a18;--purple:#9b4dff;--card:#150d24}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Special Elite',Georgia,serif}
+body{min-height:100vh;padding:20px 14px 60px;background:radial-gradient(900px 500px at 50% -10%,#3a1466 0%,transparent 60%),var(--bg)}
+h1{font-family:'Creepster',Georgia,serif;font-weight:400;font-size:clamp(40px,10vw,64px);margin:0;text-align:center;color:var(--orange);text-shadow:0 0 18px rgba(255,122,24,.5)}
+.sub{text-align:center;color:var(--muted);margin:4px 0 22px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;max-width:1200px;margin:0 auto}
+.tile{background:var(--card);border:1px solid #3b2a5c;border-radius:16px;overflow:hidden}
+.imgs{position:relative}
+.imgs img.after{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+.imgs img.before{position:absolute;right:10px;bottom:10px;width:30%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;border:2px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,.6)}
+.cursedfx{filter:grayscale(.5) sepia(.6) hue-rotate(-35deg) saturate(2.4) contrast(1.35) brightness(.72)}
+.meta{padding:12px 14px 14px}
+.meta h2{font-family:'Creepster',serif;font-weight:400;font-size:28px;margin:0;color:var(--orange)}
+.meta .t{color:var(--purple);margin:0 0 6px}
+.meta p{margin:4px 0;line-height:1.35;font-size:15px}
+.row{display:flex;gap:8px;margin-top:10px}
+.row a,.row button{flex:1;text-align:center;background:#1b1230;color:var(--ink);border:1px solid #3b2a5c;border-radius:10px;padding:8px;font:inherit;font-size:14px;text-decoration:none;cursor:pointer}
+.empty{text-align:center;color:var(--muted);margin-top:40px}
+</style>
+</head>
+<body>
+<h1>Halloween 2026</h1>
+<div class="sub" id="sub">The haunted guest album</div>
+<div id="grid"></div>
+<div class="empty" id="empty" style="display:none">No monsters yet. Be the first!</div>
+<script>
+(function(){
+  var isLocal=false,lastSig='';
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML}
+  fetch('/api/info').then(function(r){return r.json()}).then(function(i){
+    isLocal=!!i.isLocal;
+    if(i.partyTitle){document.querySelector('h1').textContent=i.partyTitle;document.title=i.partyTitle+' - Album'}
+  }).catch(function(){}).then(load);
+  function load(){
+    fetch('/api/photos',{cache:'no-store'}).then(function(r){return r.json()}).then(function(list){
+      list=list.filter(function(p){return p.status!=='pending'}).reverse();
+      var sig=list.map(function(p){return p.id}).join(',');
+      if(sig===lastSig)return;
+      lastSig=sig;
+      document.getElementById('sub').textContent=list.length+' guest'+(list.length===1?'':'s')+' haunted so far';
+      document.getElementById('empty').style.display=list.length?'none':'block';
+      document.getElementById('grid').innerHTML=list.map(tile).join('');
+    }).catch(function(){});
+  }
+  function tile(p){
+    var fb=!p.monsterImg,c=p.card||{};
+    return '<div class="tile"><div class="imgs"><img class="after'+(fb?' cursedfx':'')+'" loading="lazy" src="'+(p.monsterImg||p.orig)+'" alt="">'+
+      '<img class="before" loading="lazy" src="'+p.orig+'" alt=""></div>'+
+      '<div class="meta"><h2>'+esc(p.name||'Unknown Guest')+'</h2><div class="t">'+esc(c.title)+'</div>'+
+      '<p>'+esc(c.curse)+'</p>'+
+      (p.judge?'<p style="color:var(--orange)"><b>'+esc(p.judge.score)+'/10</b> <span style="color:var(--purple)">'+esc(p.judge.costume)+'</span><br><i>&ldquo;'+esc(p.judge.roast)+'&rdquo;</i></p>':'')+
+      '<div class="row"><a href="'+(p.monsterImg||p.orig)+'" download>Save monster</a><a href="'+p.orig+'" download>Save original</a>'+
+      (isLocal?'<button data-rename="'+p.id+'" data-name="'+esc(p.name||'')+'">Rename</button><button data-hide="'+p.id+'">Hide</button>':'')+'</div></div></div>';
+  }
+  document.addEventListener('click',function(e){
+    var rid=e.target.getAttribute&&e.target.getAttribute('data-rename');
+    if(rid){
+      var n=prompt('Who is in this photo?',e.target.getAttribute('data-name')||'');
+      if(n===null)return;
+      fetch('/api/rename/'+rid+'?name='+encodeURIComponent(n.trim()),{method:'POST'}).then(function(){lastSig='';load()});
+      return;
+    }
+    var id=e.target.getAttribute&&e.target.getAttribute('data-hide');
+    if(!id)return;
+    if(!confirm('Hide this one from the TV and album? (the files stay in the album folder)'))return;
+    fetch('/api/hide/'+id,{method:'POST'}).then(function(){lastSig='';load()});
+  });
+  setInterval(load,10000);
+})();
+</script>
+</body>
+</html>

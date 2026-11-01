@@ -1,0 +1,15 @@
+{
+  "name": "haunt-booth",
+  "version": "1.0.0",
+  "description": "A Halloween party photo booth: guests snap a selfie, AI turns them into a monster with a cursed trading card, and the TV runs the show.",
+  "main": "server.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "start": "node server.js",
+    "demo": "DEMO=1 node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "keywords": ["halloween", "photo-booth", "party", "openai", "gpt-image"],
+  "license": "MIT",
+  "private": true
+}
