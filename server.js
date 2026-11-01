@@ -623,26 +623,36 @@ async function processRecord(r, buf) {
     console.error(`[${r.id}] image failed, using fallback: ${r.error}`);
   }
   save(r);
-  if (r.status === 'done') scheduleScene();
+  scheduleScene(); // costume scenes use every guest's original photo, even if their monster failed
 }
 
-// ---------- group scenes: the monsters partying in front of the house ----------
-// Guests are split into groups of SCENE_MAX in arrival order (1-15, 16-30, ...). Each group gets its own painting,
-// repainted (debounced) only when its guest list changes, so new arrivals only repaint the newest group.
-// One image edit call takes up to 16 inputs: the house + SCENE_MAX monsters.
+// ---------- group scenes: everyone partying in front of the house ----------
+// Two kinds of group painting, each split into groups of SCENE_MAX guests in arrival order (1-15, 16-30, ...):
+//   monster: the guests' monster portraits throwing a party (the Monster Bash)
+//   costume: the guests as themselves, from their original photos, in their real costumes (the Costume Party).
+//            Selfies are usually cropped, so the AI completes the parts of each costume it can't see.
+// Each group is repainted (debounced) only when its guest list changes, so new arrivals only repaint the newest group.
+// One image edit call takes up to 16 inputs: the house + SCENE_MAX guests.
 const SCENE_FILE = path.join(ALBUM, 'scenes.json');
 const SCENE_MAX = Math.min(15, parseInt(process.env.SCENE_MAX, 10) || 15);
 const SCENE_DELAY = parseInt(process.env.SCENE_DELAY_MS, 10) || 20000;
-let scenes = [], sceneBusy = false, sceneDirty = false, sceneTimer = null;
-try { scenes = JSON.parse(fs.readFileSync(SCENE_FILE, 'utf8')); } catch (_) { /* none yet */ }
-function sceneGroups() {
-  const all = [...records.values()].filter((r) => !r.hidden && r.status === 'done' && r.monsterFile)
+const SCENE_KINDS = ['monster'].concat(process.env.SCENE_COSTUME === '0' ? [] : ['costume']);
+let scenes = { monster: [], costume: [] }, sceneBusy = false, sceneDirty = false, sceneTimer = null;
+try {
+  const saved = JSON.parse(fs.readFileSync(SCENE_FILE, 'utf8'));
+  if (Array.isArray(saved)) scenes.monster = saved; // older format: monster scenes only
+  else Object.assign(scenes, saved);
+} catch (_) { /* none yet */ }
+const saveScenes = () => fs.writeFileSync(SCENE_FILE, JSON.stringify(scenes, null, 2));
+
+function sceneGroups(kind) {
+  const all = [...records.values()]
+    .filter((r) => !r.hidden && (kind === 'costume' ? r.status !== 'pending' : r.status === 'done' && r.monsterFile))
     .sort((a, b) => a.createdAt - b.createdAt);
   const groups = [];
   for (let i = 0; i < all.length; i += SCENE_MAX) groups.push(all.slice(i, i + SCENE_MAX));
-  // A lone guest can't throw a party by themselves: a new group only gets painted once it has 2 guests.
-  if (groups.length > 1 && groups[groups.length - 1].length < 2) groups.pop();
-  return groups;
+  // A lone guest can't throw a party by themselves: a group only gets painted once it has 2 guests.
+  return groups.filter((g) => g.length >= 2);
 }
 function scheduleScene() {
   if (DEMO || process.env.SCENE === '0') return;
@@ -653,46 +663,72 @@ function scheduleScene() {
 async function makeScenes() {
   sceneBusy = true; sceneDirty = false;
   try {
-    const groups = sceneGroups().filter((g) => g.length >= 2);
-    scenes = scenes.slice(0, groups.length); // groups vanish if guests were hidden
-    for (let gi = 0; gi < groups.length; gi++) {
-      const sig = groups[gi].map((r) => r.id).join(',');
-      if (scenes[gi] && scenes[gi].sig === sig) continue;
-      scenes[gi] = await paintScene(groups[gi], gi, sig);
-      fs.writeFileSync(SCENE_FILE, JSON.stringify(scenes, null, 2));
+    for (const kind of SCENE_KINDS) {
+      const groups = sceneGroups(kind);
+      scenes[kind] = (scenes[kind] || []).slice(0, groups.length); // groups vanish if guests were hidden
+      for (let gi = 0; gi < groups.length; gi++) {
+        const sig = groups[gi].map((r) => r.id).join(',');
+        if (scenes[kind][gi] && scenes[kind][gi].sig === sig) continue;
+        try {
+          scenes[kind][gi] = await paintScene(kind, groups[gi], gi, sig);
+        } catch (e) {
+          console.error(`[${kind} scene ${gi + 1}] failed: ${e.message}`); // keep going with the other groups/kinds
+        }
+        saveScenes();
+      }
     }
-    fs.writeFileSync(SCENE_FILE, JSON.stringify(scenes, null, 2));
+    saveScenes();
   } finally {
     sceneBusy = false;
     if (sceneDirty) scheduleScene();
   }
 }
-async function paintScene(group, gi, sig) {
+
+const SCENE_MOODS = ['dancing wildly under party lights', 'gathered around a roaring bonfire roasting marshmallows', 'posing for a group photo on the front steps',
+  'doing a spooky conga line across the lawn', 'toasting with glowing potions around a cauldron punch bowl', 'crowding around a DJ booth on the driveway'];
+const HOUSE_RULE = 'Keep the house recognizable (same architecture, roof, windows and garage) but decorated for Halloween night: glowing windows, jack-o\'-lanterns, fog, cobwebs, a big full moon, purple and orange party lights. ';
+
+function scenePrompt(kind, group, gi) {
   const n = group.length;
   const names = group.map((r, i) => `image ${i + 2}: ${r.name || 'a guest'}`).join('; ');
-  const moods = ['dancing wildly under party lights', 'gathered around a roaring bonfire roasting marshmallows', 'posing for a group photo on the front steps',
-    'doing a spooky conga line across the lawn', 'toasting with glowing potions around a cauldron punch bowl', 'crowding around a DJ booth on the driveway'];
-  const prompt =
-    `Image 1 is a house. Images 2 to ${n + 1} are ${n} Halloween party guests who were each turned into a monster (${names}). ` +
+  const mood = SCENE_MOODS[(gi + (kind === 'costume' ? 3 : 0)) % SCENE_MOODS.length];
+  if (kind === 'costume') {
+    return `Image 1 is a house. Images 2 to ${n + 1} are photos of ${n} real Halloween party guests in their costumes (${names}). ` +
+      `Create ONE wide group picture of these exact ${n} people, as themselves in their own costumes (not monsters), throwing a joyful Halloween costume party ` +
+      `on the front lawn and driveway of THIS exact house at night, ${mood}. ` + HOUSE_RULE +
+      'Each person must look as close as possible to their photo: same face, hair, skin tone, glasses, facial hair, makeup and expression, so friends instantly recognize them. ' +
+      'Keep every visible part of each costume exactly as it is (colors, patterns, hats, masks, wigs, props). ' +
+      'Most photos are close-up selfies that cut off the body: show everyone full-length or three-quarter, and complete the parts of each costume that are not visible ' +
+      'in a way that naturally matches the visible part (same character, colors and materials). ' +
+      `Every one of the ${n} guests must appear exactly once, faces clearly visible and not hidden. No other people. ` +
+      'Realistic, like a fun professional party photo with warm, cinematic lighting. No text or lettering.';
+  }
+  return `Image 1 is a house. Images 2 to ${n + 1} are ${n} Halloween party guests who were each turned into a monster (${names}). ` +
     `Create ONE wide cinematic group picture: all ${n} of these monsters together throwing a wild, joyful Halloween party on the front lawn and driveway of THIS exact house at night, ` +
-    `${moods[gi % moods.length]}. ` +
-    'Keep the house recognizable (same architecture, roof, windows and garage) but haunted: glowing windows, jack-o\'-lanterns, fog, cobwebs, a big full moon, purple and orange party lights. ' +
+    `${mood}. ` + HOUSE_RULE.replace('decorated for Halloween night', 'haunted') +
     `Every one of the ${n} monsters must appear exactly once, keeping their face, costume, colors and monster look from their image so friends can spot them. ` +
     'Everyone clearly visible, faces not hidden. No other people besides these monsters. ' +
     'Spooky but fun, not gory. Painterly, highly detailed, rich cinematic lighting. No text or lettering.';
+}
+
+async function paintScene(kind, group, gi, sig) {
+  const n = group.length;
   const form = new FormData();
   form.append('model', IMAGE_MODEL);
-  form.append('prompt', prompt);
+  form.append('prompt', scenePrompt(kind, group, gi));
   form.append('size', '1536x1024');
   form.append('quality', process.env.SCENE_QUALITY || QUALITY);
   form.append('output_format', 'jpeg');
   form.append('output_compression', '85');
+  // Faces matter most when painting people as themselves.
+  if (kind === 'costume' && /^gpt-image-1/.test(IMAGE_MODEL)) form.append('input_fidelity', 'high');
   form.append('image[]', new Blob([fs.readFileSync(BACKGROUND)], { type: /\.png$/i.test(BACKGROUND) ? 'image/png' : 'image/jpeg' }), path.basename(BACKGROUND));
   for (const r of group) {
-    const f = path.join(ALBUM, r.monsterFile);
-    form.append('image[]', new Blob([fs.readFileSync(f)], { type: /\.png$/.test(f) ? 'image/png' : 'image/jpeg' }), r.monsterFile);
+    const file = kind === 'costume' ? `${r.id}.orig.jpg` : r.monsterFile;
+    form.append('image[]', new Blob([fs.readFileSync(path.join(ALBUM, file))], { type: /\.png$/.test(file) ? 'image/png' : 'image/jpeg' }), file);
   }
-  console.log(`[scene ${gi + 1}] painting ${n} guests partying in front of the house...`);
+  const label = `[${kind} scene ${gi + 1}]`;
+  console.log(`${label} painting ${n} guests partying in front of the house...`);
   const t0 = Date.now();
   const res = await fetch(BASE + '/images/edits', {
     method: 'POST', headers: { Authorization: 'Bearer ' + KEY }, body: form, signal: AbortSignal.timeout(300000),
@@ -703,9 +739,9 @@ async function paintScene(group, gi, sig) {
   if (!res.ok) throw new Error((json && json.error && json.error.message) || text.slice(0, 200));
   const item = json && json.data && json.data[0];
   if (!item || !item.b64_json) throw new Error('no image returned');
-  const file = `scene${gi + 1}-${Date.now().toString(36)}.jpg`;
+  const file = `${kind === 'costume' ? 'costume-' : ''}scene${gi + 1}-${Date.now().toString(36)}.jpg`;
   fs.writeFileSync(path.join(ALBUM, file), Buffer.from(item.b64_json, 'base64'));
-  console.log(`[scene ${gi + 1}] done: ${n} guests in ${Math.round((Date.now() - t0) / 1000)}s -> ${file}`);
+  console.log(`${label} done: ${n} guests in ${Math.round((Date.now() - t0) / 1000)}s -> ${file}`);
   return { file, sig, count: n, names: group.map((r) => r.name || 'Guest'), createdAt: Date.now() };
 }
 setTimeout(scheduleScene, 3000); // catch up after a restart if the guest list changed
@@ -793,7 +829,11 @@ const server = http.createServer(async (req, res) => {
       if (p === '/qrcode.js') return sendFile(res, path.join(PUB, 'qrcode.js'));
       if (p === '/bg.jpg') return sendFile(res, BACKGROUND, { 'Cache-Control': 'no-cache' });
       if (p === '/api/scene') {
-        return sendJson(res, 200, { scenes: scenes.map((x, i) => ({ url: `/photos/${x.file}`, part: i + 1, count: x.count, createdAt: x.createdAt })) });
+        const list = [];
+        for (const kind of ['monster', 'costume']) {
+          (scenes[kind] || []).forEach((x, i) => x && list.push({ kind, url: `/photos/${x.file}`, part: i + 1, parts: scenes[kind].length, count: x.count, createdAt: x.createdAt }));
+        }
+        return sendJson(res, 200, { scenes: list });
       }
       if (p === '/api/awards') {
         const a = await getAwards();

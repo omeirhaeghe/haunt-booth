@@ -35,7 +35,7 @@
 | 🃏 **Cursed trading card** | A monster title, a cause of death, last words and Fright / Charm / Stamina stats. |
 | ⚖️ **Costume judge** | A vision model guesses the costume, roasts it (never the person) and scores it out of 10. Optionally web-searches obscure costumes first. |
 | ❤️ **Crowd vote** | Every phone gets 3 hearts. Voting closes on a timer, and the TV announces **People's Choice** and **AI's Choice**. If the AI finalists tie, it compares them side by side and picks one. |
-| 🏚️ **Group scenes** | Every 15 guests, all their monsters get painted together throwing a party in front of your house. |
+| 🏚️ **Group scenes** | Every 15 guests, two group paintings in front of your house: **The Monster Bash** (everyone's monster partying together) and **The Costume Party** (everyone as themselves, painted from their original photos as faithfully as possible, with the AI completing costume parts the selfie cut off). |
 | 📺 **The TV show** | Cards rotate with a glitchy "possession" reveal, plus a Hall of Fame, a before/after montage and the winners. |
 | 🎭 **Host easter egg** | The hosts don't become monsters: they become the most beautiful people in the room. |
 | 🖨️ **Printable signs** | QR signs to join the Wi-Fi, get monsterized and vote. |
@@ -115,6 +115,7 @@ Everything lives in `.env` (the wizard writes the common ones). See [`.env.examp
 | `BACKGROUND` | `bg.jpg` | TV background, also the house in group scenes. Drop a spooky photo of *your* house in `public/` |
 | `JUDGE_SEARCH` | off | `1` = the judge web-searches the costume first |
 | `SCENE` | on | `0` turns off the group party paintings |
+| `SCENE_COSTUME` | on | `0` keeps only the monster group scenes, not the costume-party ones |
 | `WIFI_NAME` / `WIFI_PASSWORD` | none | Adds a "join the Wi-Fi" QR code to the TV and signs (never leaves your computer) |
 | `PUBLIC_URL` | LAN address | Set this if guests connect through a tunnel like ngrok |
 
@@ -122,7 +123,7 @@ Everything lives in `.env` (the wizard writes the common ones). See [`.env.examp
 
 ## 💸 Cost
 
-Roughly **$0.05 to $0.20 per guest** with `gpt-image-1` at medium quality (image edit, card, judge), plus about $0.25 per group scene. A 40-person party costs a few dollars. Use `IMAGE_QUALITY=low` to cut it further.
+Roughly **$0.05 to $0.20 per guest** with `gpt-image-1` at medium quality (image edit, card, judge), plus about $0.25 per group scene (two kinds per 15 guests, repainted as new guests arrive). A 40-person party costs a few dollars. Use `IMAGE_QUALITY=low` to cut it further.
 
 ## 🔒 Privacy
 

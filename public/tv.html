@@ -361,7 +361,8 @@ body{background:linear-gradient(rgba(10,6,18,.25),rgba(10,6,18,.5)),url('/bg.jpg
     scenes.forEach(function(x){if(x.createdAt>sceneSeen&&x===sc)sceneSeen=x.createdAt});
     $('card').classList.remove('show');$('stage').style.opacity=0;
     var el=$('scene');
-    el.innerHTML='<img src="'+sc.url+'" alt=""><div class="cap">The Monster Bash'+(scenes.length>1?' &middot; Part '+sc.part:'')+'</div>';
+    var capTitle=sc.kind==='costume'?'The Costume Party':'The Monster Bash';
+    el.innerHTML='<img src="'+sc.url+'" alt=""><div class="cap">'+capTitle+((sc.parts||1)>1?' &middot; Part '+sc.part:'')+'</div>';
     void el.offsetWidth;el.classList.add('on');
     t(18000,function(){el.classList.remove('on');t(1200,hideOverlay)});
     return true;
