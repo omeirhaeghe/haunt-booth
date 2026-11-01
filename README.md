@@ -138,6 +138,7 @@ Everything runs on your computer. Photos go only to the OpenAI API for processin
 ## 🛣️ Roadmap
 
 - [ ] A proper app: a one-click desktop app with the setup screen built in
+- [ ] An Apple TV app, so the show runs right on the TV with no Mac mirroring or HDMI
 - [ ] Custom party themes beyond Halloween (birthdays, Christmas, sci-fi, '80s prom...) with their own monsters, styles and wording
 - [ ] Web-based setup page instead of the terminal wizard
 - [ ] Shareable per-guest card page and a printable card
